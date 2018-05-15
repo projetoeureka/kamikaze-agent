@@ -18,7 +18,10 @@ class KamikazeDataSource(object):
         self._timer = None
         self._times = None
         self._frames = []
-        self._kamikaze_host = settings["kamikaze.host"]
+        self._kamikaze_host = os.environ.get(
+            "KAMIKAZE_DATA_COLLECTOR_HOST",
+            "http://datacollector.kamikaze.prod.gkn.io",
+        )
         self._app_id = os.environ.get("KAMIKAZE_APP_ID")
 
     def start(self):
@@ -74,18 +77,17 @@ class KamikazeDataSource(object):
 
     def _process_uploads(self):
         try:
-            while self._frames:
-                print "[kamikaze] uploading frame {}".format(json.dumps(self._frames[0]))
-                requests.post(
-                    "{}/apps/{}/cpu-usage".format(
-                        self._kamikaze_host.rstrip("/"),
-                        self._app_id,
-                    ),
-                    data=json.dumps(self._frames[0]),
-                    headers={"Content-Type": "application/json"},
-                    timeout=5.0,
-                ).raise_for_status()
-                self._frames.pop(0)
+            print "[kamikaze] uploading {} frames".format(len(self._frames))
+            requests.post(
+                "{}/apps/{}/cpu-usage".format(
+                    self._kamikaze_host.rstrip("/"),
+                    self._app_id,
+                ),
+                data=json.dumps(self._frames),
+                headers={"Content-Type": "application/json"},
+                timeout=5.0,
+            ).raise_for_status()
+            self._frames = []
         except:
             print "[kamikaze] unable to upload frame"
             traceback.print_exc()
